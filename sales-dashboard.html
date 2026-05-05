@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sales & Revenue Dashboard | Power BI Style</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;500;600&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #e8e8f0; min-height: 100vh; }
+
+    /* ── Header ── */
+    .header {
+      background: #252542;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #3a3a5c;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .pbi-logo { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #f2c94c; font-weight: 600; }
+    .pbi-logo .icon { font-size: 20px; }
+    .divider { width: 1px; height: 18px; background: #3a3a5c; }
+    .report-title { font-size: 14px; color: #c0c0d8; font-weight: 500; }
+    .header-right { display: flex; gap: 8px; align-items: center; }
+    .badge { background: #2d2d50; border: 1px solid #4a4a70; border-radius: 4px; padding: 3px 10px; font-size: 11px; color: #a0a0c0; }
+    .refresh-btn { background: #f2c94c; color: #1a1a2e; border: none; border-radius: 4px; padding: 5px 12px; font-size: 11px; font-weight: 600; cursor: pointer; transition: opacity .15s; }
+    .refresh-btn:hover { opacity: 0.85; }
+
+    /* ── Canvas ── */
+    .canvas { padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── Slicers ── */
+    .slicer-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .slicer { background: #252542; border: 1px solid #3a3a5c; border-radius: 6px; padding: 6px 12px; display: flex; align-items: center; gap: 8px; }
+    .slicer label { font-size: 11px; color: #8888a8; white-space: nowrap; }
+    .slicer select {
+      background: #1a1a2e; border: 1px solid #4a4a70; border-radius: 4px;
+      color: #e0e0f0; font-size: 12px; padding: 3px 8px; outline: none; cursor: pointer;
+    }
+    .slicer select:focus { border-color: #4a9eff; }
+    .filter-tag { background: #2d2d50; border: 1px solid #4a9eff44; border-radius: 20px; padding: 3px 10px; font-size: 11px; color: #4a9eff; }
+
+    /* ── KPI Cards ── */
+    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .kpi {
+      background: #252542; border: 1px solid #3a3a5c; border-radius: 8px;
+      padding: 14px 16px; position: relative; overflow: hidden;
+      transition: border-color .2s;
+    }
+    .kpi:hover { border-color: #5a5a7c; }
+    .kpi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+    .kpi.blue::before  { background: #4a9eff; }
+    .kpi.green::before { background: #2ecc71; }
+    .kpi.amber::before { background: #f2c94c; }
+    .kpi.coral::before { background: #ff6b6b; }
+    .kpi-icon { position: absolute; right: 12px; top: 12px; font-size: 20px; opacity: 0.25; }
+    .kpi-label { font-size: 10px; color: #8888a8; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+    .kpi-value { font-size: 24px; font-weight: 600; color: #e8e8f0; line-height: 1; }
+    .kpi-delta { font-size: 11px; margin-top: 6px; display: flex; align-items: center; gap: 3px; }
+    .kpi-delta.up   { color: #2ecc71; }
+    .kpi-delta.down { color: #ff6b6b; }
+    .kpi-delta span { color: #8888a8; font-size: 10px; }
+
+    /* ── Charts ── */
+    .charts-row  { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+    .charts-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .card {
+      background: #252542; border: 1px solid #3a3a5c; border-radius: 8px;
+      padding: 14px 16px; transition: border-color .2s;
+    }
+    .card:hover { border-color: #5a5a7c; }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .card-title { font-size: 12px; font-weight: 600; color: #c0c0d8; }
+    .card-subtitle { font-size: 10px; color: #6868a0; margin-top: 2px; }
+    .chart-wrap { position: relative; width: 100%; }
+    .legend-row { display: flex; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #8888a8; }
+    .legend-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; font-size: 10px; color: #8888a8; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 8px; border-bottom: 1px solid #3a3a5c; font-weight: 500; }
+    td { padding: 8px 8px; border-bottom: 1px solid #2a2a44; color: #c0c0d8; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #2d2d50; }
+    .bar-mini { height: 4px; background: #2d2d50; border-radius: 2px; margin-top: 4px; }
+    .bar-fill  { height: 4px; border-radius: 2px; }
+    .rank-num  { color: #6868a0; font-variant-numeric: tabular-nums; }
+
+    /* ── Footer ── */
+    .footer { text-align: center; padding: 12px; font-size: 10px; color: #4a4a70; border-top: 1px solid #2a2a44; margin-top: 4px; }
+    .footer a { color: #6868a0; text-decoration: none; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .kpi-row     { grid-template-columns: repeat(2, 1fr); }
+      .charts-row  { grid-template-columns: 1fr; }
+      .charts-row2 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 500px) {
+      .kpi-row { grid-template-columns: 1fr; }
+      .header-right .badge { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="pbi-logo">
+      <span class="icon">⬛</span> Power BI
+    </div>
+    <div class="divider"></div>
+    <div class="report-title">Sales &amp; Revenue Analytics · 2024</div>
+  </div>
+  <div class="header-right">
+    <div class="badge" id="lastRefresh">Last refreshed: —</div>
+    <button class="refresh-btn" onclick="refreshTime()">↻ Refresh</button>
+  </div>
+</div>
+
+<!-- Dashboard Canvas -->
+<div class="canvas">
+
+  <!-- Slicers -->
+  <div class="slicer-row">
+    <div class="slicer">
+      <label>Year</label>
+      <select><option>2024</option><option>2023</option><option>2022</option></select>
+    </div>
+    <div class="slicer">
+      <label>Quarter</label>
+      <select id="qtrSel" onchange="filterByQuarter()">
+        <option value="all">All Quarters</option>
+        <option value="0,1,2">Q1</option>
+        <option value="3,4,5">Q2</option>
+        <option value="6,7,8">Q3</option>
+        <option value="9,10,11">Q4</option>
+      </select>
+    </div>
+    <div class="slicer">
+      <label>Region</label>
+      <select>
+        <option>All Regions</option>
+        <option>North America</option>
+        <option>Europe</option>
+        <option>Asia Pacific</option>
+        <option>LATAM</option>
+      </select>
+    </div>
+    <div class="slicer">
+      <label>Category</label>
+      <select>
+        <option>All Categories</option>
+        <option>Software</option>
+        <option>Hardware</option>
+        <option>Services</option>
+      </select>
+    </div>
+    <div class="filter-tag">FY 2024</div>
+    <div class="filter-tag">Global View</div>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="kpi-row">
+    <div class="kpi blue">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-label">Total Revenue</div>
+      <div class="kpi-value" id="kpi-rev">$4.82M</div>
+      <div class="kpi-delta up">▲ <span>12.4% vs last year</span></div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-label">Gross Profit</div>
+      <div class="kpi-value" id="kpi-gp">$2.17M</div>
+      <div class="kpi-delta up">▲ <span>8.1% vs last year</span></div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-icon">🛒</div>
+      <div class="kpi-label">Total Orders</div>
+      <div class="kpi-value" id="kpi-ord">3,241</div>
+      <div class="kpi-delta up">▲ <span>5.6% vs last year</span></div>
+    </div>
+    <div class="kpi coral">
+      <div class="kpi-icon">↩️</div>
+      <div class="kpi-label">Return Rate</div>
+      <div class="kpi-value" id="kpi-ret">3.2%</div>
+      <div class="kpi-delta down">▼ <span>0.4pp improvement</span></div>
+    </div>
+  </div>
+
+  <!-- Row 1: Monthly Bar + Donut -->
+  <div class="charts-row">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Monthly Revenue vs Target</div>
+          <div class="card-subtitle">Bar + Line · USD thousands</div>
+        </div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-sq" style="background:#4a9eff"></div> Revenue</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#f2c94c;border-radius:50%"></div> Target</div>
+      </div>
+      <div class="chart-wrap" style="height:210px">
+        <canvas id="barChart" role="img" aria-label="Monthly revenue vs target for 2024">Monthly revenue bars and target trend line Jan-Dec 2024.</canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Revenue by Region</div>
+          <div class="card-subtitle">Donut · % share</div>
+        </div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-sq" style="background:#4a9eff"></div> N. America 42%</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#2ecc71"></div> Europe 28%</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#f2c94c"></div> APAC 19%</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#ff6b6b"></div> LATAM 11%</div>
+      </div>
+      <div class="chart-wrap" style="height:170px">
+        <canvas id="donutChart" role="img" aria-label="Revenue by region donut chart">North America 42%, Europe 28%, Asia Pacific 19%, LATAM 11%.</canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Category bar + Product table -->
+  <div class="charts-row2">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Revenue by Product Category</div>
+          <div class="card-subtitle">Horizontal bar · USD millions</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:180px">
+        <canvas id="hbarChart" role="img" aria-label="Revenue by product category horizontal bar">Software $2.41M, Services $1.38M, Hardware $1.03M.</canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Top Products by Revenue</div>
+          <div class="card-subtitle">Ranked · with inline bar</div>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Product</th><th>Revenue</th><th>YoY</th><th>Share</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="rank-num">01</td>
+            <td>Enterprise Suite</td>
+            <td style="color:#4a9eff">$1.24M</td>
+            <td style="color:#2ecc71">▲ 18%</td>
+            <td><div class="bar-mini"><div class="bar-fill" style="background:#4a9eff;width:82%"></div></div></td>
+          </tr>
+          <tr>
+            <td class="rank-num">02</td>
+            <td>Pro License</td>
+            <td style="color:#4a9eff">$987K</td>
+            <td style="color:#2ecc71">▲ 11%</td>
+            <td><div class="bar-mini"><div class="bar-fill" style="background:#4a9eff;width:65%"></div></div></td>
+          </tr>
+          <tr>
+            <td class="rank-num">03</td>
+            <td>Hardware Bundle</td>
+            <td style="color:#4a9eff">$743K</td>
+            <td style="color:#ff6b6b">▼ 3%</td>
+            <td><div class="bar-mini"><div class="bar-fill" style="background:#4a9eff;width:49%"></div></div></td>
+          </tr>
+          <tr>
+            <td class="rank-num">04</td>
+            <td>Support Plan</td>
+            <td style="color:#4a9eff">$612K</td>
+            <td style="color:#2ecc71">▲ 7%</td>
+            <td><div class="bar-mini"><div class="bar-fill" style="background:#4a9eff;width:40%"></div></div></td>
+          </tr>
+          <tr>
+            <td class="rank-num">05</td>
+            <td>Starter Pack</td>
+            <td style="color:#4a9eff">$384K</td>
+            <td style="color:#f2c94c">▲ 1%</td>
+            <td><div class="bar-mini"><div class="bar-fill" style="background:#4a9eff;width:25%"></div></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    Contoso Corp · Sales &amp; Revenue Dashboard · Built with HTML, CSS &amp; Chart.js ·
+    <a href="https://github.com" target="_blank">View on GitHub</a>
+  </div>
+
+</div>
+
+<script>
+  /* ── Refresh timestamp ── */
+  function refreshTime() {
+    const now = new Date();
+    document.getElementById('lastRefresh').textContent =
+      'Last refreshed: ' + now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  }
+  refreshTime();
+
+  /* ── Data ── */
+  const months  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const revData = [310,285,390,420,375,460,510,490,540,480,560,610];
+  const tgtData = [320,310,370,400,400,440,480,500,520,500,540,580];
+
+  /* ── Monthly Bar + Line ── */
+  const barCtx = document.getElementById('barChart');
+  const barChart = new Chart(barCtx, {
+    data: {
+      labels: months,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Revenue',
+          data: revData,
+          backgroundColor: '#4a9eff66',
+          borderColor: '#4a9eff',
+          borderWidth: 1,
+          borderRadius: 4,
+          borderSkipped: false
+        },
+        {
+          type: 'line',
+          label: 'Target',
+          data: tgtData,
+          borderColor: '#f2c94c',
+          borderWidth: 2,
+          pointBackgroundColor: '#f2c94c',
+          pointBorderColor: '#252542',
+          pointBorderWidth: 1.5,
+          pointRadius: 4,
+          tension: 0.35,
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a2e',
+          borderColor: '#3a3a5c',
+          borderWidth: 1,
+          titleColor: '#c0c0d8',
+          bodyColor: '#e8e8f0',
+          callbacks: { label: ctx => ' $' + ctx.parsed.y + 'K' }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#8888a8', font: { size: 10 }, maxRotation: 0 },
+          grid: { color: '#2a2a44' },
+          border: { color: '#3a3a5c' }
+        },
+        y: {
+          ticks: { color: '#8888a8', font: { size: 10 }, callback: v => '$' + v + 'K' },
+          grid: { color: '#2a2a44' },
+          border: { color: '#3a3a5c' }
+        }
+      }
+    }
+  });
+
+  /* ── Donut ── */
+  new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['N. America','Europe','Asia Pacific','LATAM'],
+      datasets: [{
+        data: [42, 28, 19, 11],
+        backgroundColor: ['#4a9eff','#2ecc71','#f2c94c','#ff6b6b'],
+        borderColor: '#252542',
+        borderWidth: 3,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a2e',
+          borderColor: '#3a3a5c',
+          borderWidth: 1,
+          titleColor: '#c0c0d8',
+          bodyColor: '#e8e8f0',
+          callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.parsed + '%' }
+        }
+      }
+    }
+  });
+
+  /* ── Horizontal Bar ── */
+  new Chart(document.getElementById('hbarChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Software','Services','Hardware'],
+      datasets: [{
+        data: [2.41, 1.38, 1.03],
+        backgroundColor: ['#4a9eff','#2ecc71','#f2c94c'],
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a2e',
+          borderColor: '#3a3a5c',
+          borderWidth: 1,
+          titleColor: '#c0c0d8',
+          bodyColor: '#e8e8f0',
+          callbacks: { label: ctx => ' $' + ctx.parsed.x.toFixed(2) + 'M' }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#8888a8', font: { size: 10 }, callback: v => '$' + v + 'M' },
+          grid: { color: '#2a2a44' },
+          border: { color: '#3a3a5c' }
+        },
+        y: {
+          ticks: { color: '#c0c0d8', font: { size: 12 } },
+          grid: { display: false },
+          border: { color: '#3a3a5c' }
+        }
+      }
+    }
+  });
+
+  /* ── Quarter filter ── */
+  function filterByQuarter() {
+    const val = document.getElementById('qtrSel').value;
+    let labels, rev, tgt;
+    if (val === 'all') {
+      labels = months;
+      rev = revData;
+      tgt = tgtData;
+    } else {
+      const idx = val.split(',').map(Number);
+      labels = idx.map(i => months[i]);
+      rev    = idx.map(i => revData[i]);
+      tgt    = idx.map(i => tgtData[i]);
+    }
+    barChart.data.labels = labels;
+    barChart.data.datasets[0].data = rev;
+    barChart.data.datasets[1].data = tgt;
+    barChart.update();
+
+    // Update KPIs based on selection
+    const total = rev.reduce((a, b) => a + b, 0);
+    document.getElementById('kpi-rev').textContent = '$' + (total / 1000).toFixed(2) + 'M';
+    document.getElementById('kpi-gp').textContent  = '$' + (total * 0.45 / 1000).toFixed(2) + 'M';
+  }
+</script>
+</body>
+</html>
