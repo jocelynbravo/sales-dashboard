@@ -36,7 +36,7 @@ sales-dashboard/
 
 ---
 
-## 📊 Data
+## Data
 
 All data in this dashboard is **sample/demo data** generated for portfolio purposes. It does not represent any real company or financial records.
 
@@ -58,8 +58,3 @@ All data in this dashboard is **sample/demo data** generated for portfolio purpo
 - Creating responsive dashboard grids with CSS Grid
 - Deploying static projects with GitHub Pages
 
-
-
----
-
-> ⭐ If you found this project useful, feel free to star the repo!
